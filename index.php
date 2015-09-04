@@ -2,20 +2,7 @@
 
 //si hemos submitido
 if(isset($_POST['fecha'])){
-    
-//    $options = array('http' => array(
-//    'method'  => 'GET',
-//    ));
-//    
-//    
-//    $html = file_get_contents('http://www.boe.es/boe/dias/2015/09/03/',false, $config);
-//    preg_match_all('<li class="dispo">(.*)</li>', $html, $title);
-//
-//    //ver datos
-//    var_dump($title);
 
-    
-    //CURL
     $c = curl_init('http://www.boe.es/boe/dias/2015/09/02/');
     curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($c, CURLOPT_HTTPHEADER, array(
@@ -40,17 +27,50 @@ if(isset($_POST['fecha'])){
     
     //preparo un array con los datos
     $datos = $title[1];
+    $datosFinales = '';
     for ($i = 0; $i < count($datos); $i++) {
         
-        echo $datos[$i].'<br/>';
+//        echo $datos[$i].'<br/>';
+        //titulo
+        preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
+        $titulo = $var1[1];
         
+        //PDF
+        preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
+        $urlPDF = "www.boe.es" . $var2[1];
         
-    }
-    
-    //var_dump($title);
-    //CURL
+       
+        //descargar el fichero en la carpeta /PDF
+        $file  = $urlPDF;
+        
+        $nombreExplode = explode('/',$file);
+        $nombre = $nombreExplode[count($nombreExplode)-1];
+        
 
-}else{
+//        $path = dirname(__FILE__)."\PDF\\".$nombre;
+//
+//        $ch = curl_init($file);
+//        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+//
+//        $data = curl_exec($ch);
+//
+//        curl_close($ch);
+//
+//        $OK = file_put_contents($path, $data);
+        
+        $row['titulo'] = $titulo;
+        $row['PDF'] = $nombre;
+        $row['urlPDF'] = $urlPDF;
+
+        $datosFinales[] = $row;
+    }
+
+    var_dump($datosFinales);
+    
+    //ahora
+    
+    
+}
 
 ?>
 
@@ -92,16 +112,93 @@ if(isset($_POST['fecha'])){
                 });
         });
         </script>
+        <script>
+
+        function evaluar(url){
+            $.ajax({
+              data:{"url":url},  
+              url: './bajarPDF.php',
+              type:"get",
+              success: function(data) {
+                //recuperamos el valor del texto
+                var val = document.getElementById("numValue");
+                //actualizamos el indicador visual con el texto
+                val.innerHTML = data+val.innerHTML;
+              }
+            });
+        }
+
+        //var idFacturas=new Array();
+        <?php
+        //recorro el post y recojo en un array los id** = on
+//        $datos = '';
+//        foreach ($_POST as $key => $value) {
+//            if('id' === substr($key,0,2)){
+//                $num = substr($key,2);
+//                $datos[$num] = $_POST['opt'.$num];
+//            }
+//        }
+        ?>
+        var listadoProveedores = new Array();
+
+        <?php
+        for ($i = 0; $i < count($datosFinales); $i++) {
+            ?>
+            listadoProveedores[<?php echo $i;?>] = "<?php echo $datosFinales[$i]['urlPDF'];?>";
+            <?php
+        }
+        ?>
+
+        //progreso actual
+        var currProgress = 0;
+        //esta la tarea completa
+        var done = false;
+        //cantidad total de progreso
+        var total = <?php echo count($datosFinales);?>;
+
+        function startProgress() {
+            //ejecuto la funcion que llama por AJAX la los procedimientos para guardar la factura    
+            evaluar(listadoProveedores[currProgress]);
+
+            ////incrementamos el valor del progreso cada vez que la funciÃ³n se ejecuta
+            currProgress++;
+            //comprobamos si hemos terminado
+            if(currProgress>(listadoProveedores.length-1)){
+                done=true;
+            }
+            // sino hemos terminado, volvemos a llamar a la funciÃ³n despuÃ©s de un tiempo
+            if(!done)
+            {
+//                document.getElementById("startBtn").disabled = true;
+                setTimeout("startProgress()",0);
+            }  
+            //tarea terminada, habilitar el botón
+            else{   
+//                document.getElementById("startBtn").disabled = false;
+            }
+        }
+
+
+        </script>
         
     </head>
-    <body>
+    <body
+        onload="
+                <?php
+                if(isset($_POST['fecha'])){
+                    echo "startProgress();";
+                }
+                ?>
+                "
+        >
         <form action="index.php" method="POST" name="form1">
             <label>Elige fecha</label>
             <input type="text" name="fecha" id="fecha" />
             <input type="submit" name="submit" value="OK" />
         </form>
+        <span id="numValue"></span>
     </body>
 </html>
 <?php
-}
+//}
 ?>
