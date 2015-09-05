@@ -20,14 +20,15 @@ class Db {
             $this->link = @mysql_connect ($this->servidor,$this->usuario,$this->password);
             @mysql_select_db ( $this->base_datos, $this->link );
             @mysql_query ( "SET NAMES 'utf8'" );
+            //@mysql_set_charset('utf8');
         }
         
 	
 	/* Método para ejecutar una sentencia sql */
 	public function ejecutar($sql) {
 		try {
-//			$this->stmt = mysql_query ( $sql, $this->link );
-			$this->stmt = @mysql_query ( $sql, $this->link ) or logger('error','conexion.php-' ,"Usuario: ".$_SESSION['strUsuario'].', Empresa: '.$_SESSION['base'].', SesionID: '.  session_id(). ' -Error MySQL= '.  mysql_errno($this->link).': '. mysql_error($this->link));
+			$this->stmt = mysql_query ( $sql, $this->link );
+//			$this->stmt = @mysql_query ( $sql, $this->link ) or logger('error','conexion.php-' ,"Usuario: ".$_SESSION['strUsuario'].', Empresa: '.$_SESSION['base'].', SesionID: '.  session_id(). ' -Error MySQL= '.  mysql_errno($this->link).': '. mysql_error($this->link));
 			return $this->stmt;
 		} catch ( Exception $e ) {
 			// die("Metodo query: Error al ejecutar la sentencia SQL");

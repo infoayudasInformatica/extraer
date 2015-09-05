@@ -1,75 +1,138 @@
 <?php
 
-//si hemos submitido
-if(isset($_POST['fecha'])){
-
-    $c = curl_init('http://www.boe.es/boe/dias/2015/09/02/');
+//funcion que extrae los datos
+function extraer($fecha){
+    
+    $fechaE = explode('/',$fecha);
+    //I Disposiciones Generales
+    $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=1';
+    
+    $c = curl_init($urlBOE);
     curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($c, CURLOPT_HTTPHEADER, array(
-    "Accept: */*",
-    "Accept-Language: *",
-    "Host: d.mismarcadores.com",
-    "Referer: http ://d.mismarcadores.com/x/feed/proxy",
-    "User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:20.0) Gecko/20100101 Firefox/20.0",
-    "X-Fsign: SW9D1eZo",
-    "X-GeoIP: 1",
-    "X-Requested-With: XMLHttpRequest",
-    "X-utime: 1"
-    ));
     $content = curl_exec($c);
     curl_close($c);
 
-    //echo $content;
+
+    //busco numero de BOE
+    preg_match_all("#</abbr>(.*?)</h2>#U", $content, $sumario);
     
-    //ahora busco lo que hay en 
+    $datosFinales = '';
+    $datosFinales['fecha'] = $fecha;
+    $datosFinales['NumeroBOE'] = $sumario[1][0];
+    
+    //ahora busco lo que hay en las distintas leyes aprobadas
     preg_match_all('|<li class="dispo">(.*?)</li>|is', $content, $title);
 //    preg_match_all('|<li class="dispo"><p>(.*?)</p></li>|is', $content, $title);
-    
+
     //preparo un array con los datos
     $datos = $title[1];
-    $datosFinales = '';
     for ($i = 0; $i < count($datos); $i++) {
-        
-//        echo $datos[$i].'<br/>';
+
         //titulo
         preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
         $titulo = $var1[1];
-        
+
         //PDF
         preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
         $urlPDF = "www.boe.es" . $var2[1];
-        
-       
+
+
         //descargar el fichero en la carpeta /PDF
         $file  = $urlPDF;
-        
+
         $nombreExplode = explode('/',$file);
         $nombre = $nombreExplode[count($nombreExplode)-1];
-        
 
-//        $path = dirname(__FILE__)."\PDF\\".$nombre;
-//
-//        $ch = curl_init($file);
-//        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//
-//        $data = curl_exec($ch);
-//
-//        curl_close($ch);
-//
-//        $OK = file_put_contents($path, $data);
-        
+
         $row['titulo'] = $titulo;
         $row['PDF'] = $nombre;
         $row['urlPDF'] = $urlPDF;
 
-        $datosFinales[] = $row;
+        $datosLeyes1[] = $row;
     }
+    
+    //III otras disposiciones
+    $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=3';
+    
+    $c = curl_init($urlBOE);
+    curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
+    $content = curl_exec($c);
+    curl_close($c);
+    
+    //ahora busco lo que hay en las distintas leyes aprobadas
+    preg_match_all('|<li class="dispo">(.*?)</li>|is', $content, $title);
+//    preg_match_all('|<li class="dispo"><p>(.*?)</p></li>|is', $content, $title);
 
-    var_dump($datosFinales);
+    //preparo un array con los datos
+    $datos = $title[1];
+    for ($i = 0; $i < count($datos); $i++) {
+
+        //titulo
+        preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
+        $titulo = $var1[1];
+
+        //PDF
+        preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
+        $urlPDF = "www.boe.es" . $var2[1];
+
+
+        //descargar el fichero en la carpeta /PDF
+        $file  = $urlPDF;
+
+        $nombreExplode = explode('/',$file);
+        $nombre = $nombreExplode[count($nombreExplode)-1];
+
+
+        $row['titulo'] = $titulo;
+        $row['PDF'] = $nombre;
+        $row['urlPDF'] = $urlPDF;
+
+        $datosLeyes3[] = $row;
+    }
     
-    //ahora
+    $datosLeyes = array_merge($datosLeyes1,$datosLeyes3);
     
+    $datosFinales['leyes'] = $datosLeyes;
     
+    return $datosFinales;
+}
+
+
+//si hemos submitido
+if(isset($_POST['fecha'])){
+
+    if($_POST['fecha'] === ''){
+        echo "introduzca una fecha";
+        echo "<input type='button' value='volver' onclick='javascript:history.back();' />";die;
+    }else{
+
+        $datosFinales = extraer($_POST['fecha']);
+        
+        
+        if(is_array($datosFinales)){
+            //guardo los datos extraidos en la BBDD
+            require_once './tools/BBDD.php';
+            $BBDD = new BBDD();
+            
+            for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
+                $OK = $BBDD->insertar($datosFinales,$i);
+                if($OK){
+                    echo "Insercion correcta<br/>";
+                }else{
+                    echo "No se insertó<br/>";
+                }
+            }
+            
+            var_dump($datosFinales);
+        }else{
+            echo "No hay datos en esa fecha";
+        }
+
+        //ahora
+        
+        
+    
+    }
 }
 
 ?>
@@ -77,8 +140,10 @@ if(isset($_POST['fecha'])){
 <!DOCTYPE html>
 <html>
     <head>
-        <meta charset="UTF-8">
-        <title>extraer datos</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!--        <meta http-equiv="Content-type" content="text/html; charset=utf-8" />-->
+<!--        <meta charset="UTF-8">-->
+        <title>Extraer datos BOE</title>
         
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.0/themes/base/jquery-ui.css" />
         <script src="https://code.jquery.com/jquery-1.8.3.js"></script>
@@ -142,9 +207,9 @@ if(isset($_POST['fecha'])){
         var listadoProveedores = new Array();
 
         <?php
-        for ($i = 0; $i < count($datosFinales); $i++) {
+        for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
             ?>
-            listadoProveedores[<?php echo $i;?>] = "<?php echo $datosFinales[$i]['urlPDF'];?>";
+            listadoProveedores[<?php echo $i;?>] = "<?php echo $datosFinales['leyes'][$i]['urlPDF'];?>";
             <?php
         }
         ?>
@@ -154,7 +219,7 @@ if(isset($_POST['fecha'])){
         //esta la tarea completa
         var done = false;
         //cantidad total de progreso
-        var total = <?php echo count($datosFinales);?>;
+        var total = <?php echo count($datosFinales['leyes']);?>;
 
         function startProgress() {
             //ejecuto la funcion que llama por AJAX la los procedimientos para guardar la factura    
@@ -191,11 +256,17 @@ if(isset($_POST['fecha'])){
                 ?>
                 "
         >
+        <?php
+        if(!isset($_POST['fecha'])){
+        ?>
         <form action="index.php" method="POST" name="form1">
             <label>Elige fecha</label>
             <input type="text" name="fecha" id="fecha" />
             <input type="submit" name="submit" value="OK" />
         </form>
+        <?php
+        }
+        ?>
         <span id="numValue"></span>
     </body>
 </html>
