@@ -1,4 +1,46 @@
 <?php
+require_once './tools/simple_html_dom.php';
+
+
+//FORRALLA
+function extraer2($fecha){
+    $fechaE = explode('/',$fecha);
+    //I Disposiciones Generales
+    $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=1';
+    $urlBOE = './wwwboe/boe.php';
+
+    $html = file_get_html($urlBOE);
+
+    //busco numero de BOE
+    $tit = $html->find('div.linkSumario2 p');
+    $titulo = $tit->plaintext;
+    
+    //ahora busco lo que hay en las distintas leyes aprobadas
+    $row = '';
+    $i=0;
+    foreach ($html->find('li.dispo p') as $value) {
+        $row[$i]['titulo'] = $value->plaintext;
+        $i++;
+    }
+    $i=0;
+    foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
+        $urlPDF = "www.boe.es" . $value->href;
+        $row[$i]['urlPDF'] = $urlPDF;
+        
+        $file  = $urlPDF;
+
+        $nombreExplode = explode('/',$file);
+        $nombre = $nombreExplode[count($nombreExplode)-1];
+        $row[$i]['PDF'] = $nombre;
+        $i++;
+    }
+    
+    
+    $resultado['leyes'] = $row;  
+//    var_dump($resultado);die;
+    return $resultado;
+}
+
 
 //funcion que extrae los datos
 function extraer($fecha){
@@ -21,7 +63,7 @@ function extraer($fecha){
     $datosFinales['NumeroBOE'] = $sumario[1][0];
     
     //ahora busco lo que hay en las distintas leyes aprobadas
-    preg_match_all('|<li class="dispo">(.*?)</li>|is', $content, $title);
+    preg_match_all("'<li class=\"dispo\">(.*?)</li>'si", $content, $title);
 //    preg_match_all('|<li class="dispo"><p>(.*?)</p></li>|is', $content, $title);
 
     //preparo un array con los datos
@@ -30,7 +72,7 @@ function extraer($fecha){
 
         //titulo
         preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
-        $titulo = $var1[1];
+        $titulo = html_entity_decode($var1[1]);
 
         //PDF
         preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
@@ -60,8 +102,7 @@ function extraer($fecha){
     curl_close($c);
     
     //ahora busco lo que hay en las distintas leyes aprobadas
-    preg_match_all('|<li class="dispo">(.*?)</li>|is', $content, $title);
-//    preg_match_all('|<li class="dispo"><p>(.*?)</p></li>|is', $content, $title);
+    preg_match_all("'<li class=\"dispo\">(.*?)</li>'si", $content, $title);
 
     //preparo un array con los datos
     $datos = $title[1];
@@ -93,8 +134,28 @@ function extraer($fecha){
     $datosLeyes = array_merge($datosLeyes1,$datosLeyes3);
     
     $datosFinales['leyes'] = $datosLeyes;
+
+    if(is_array($datosFinales)){
+        //guardo los datos extraidos en la BBDD
+        require_once './tools/BBDD.php';
+        $BBDD = new BBDD();
+
+        for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
+            $OK = $BBDD->insertar($datosFinales,$i);
+            if($OK){
+                echo "Insercion correcta<br/>";
+            }else{
+                echo "No se insertó<br/>";
+            }
+        }
+
+        var_dump($datosFinales);
+    }else{
+        echo "No hay datos en esa fecha";
+    }
     
-    return $datosFinales;
+    
+    return true;
 }
 
 
@@ -106,28 +167,9 @@ if(isset($_POST['fecha'])){
         echo "<input type='button' value='volver' onclick='javascript:history.back();' />";die;
     }else{
 
-        $datosFinales = extraer($_POST['fecha']);
+        $datosFinales=extraer2($_POST['fecha']);
         
-        
-        if(is_array($datosFinales)){
-            //guardo los datos extraidos en la BBDD
-            require_once './tools/BBDD.php';
-            $BBDD = new BBDD();
-            
-            for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
-                $OK = $BBDD->insertar($datosFinales,$i);
-                if($OK){
-                    echo "Insercion correcta<br/>";
-                }else{
-                    echo "No se insertó<br/>";
-                }
-            }
-            
-            var_dump($datosFinales);
-        }else{
-            echo "No hay datos en esa fecha";
-        }
-
+        var_dump($datosFinales);
         //ahora
         
         
@@ -140,9 +182,9 @@ if(isset($_POST['fecha'])){
 <!DOCTYPE html>
 <html>
     <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<!--        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">-->
 <!--        <meta http-equiv="Content-type" content="text/html; charset=utf-8" />-->
-<!--        <meta charset="UTF-8">-->
+        <meta charset="UTF-8">
         <title>Extraer datos BOE</title>
         
         <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.0/themes/base/jquery-ui.css" />
