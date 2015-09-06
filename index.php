@@ -1,19 +1,37 @@
 <?php
 require_once './tools/simple_html_dom.php';
+require_once './tools/BBDD.php';
+$BBDD = new BBDD();
 
 
-//FORRALLA
-function extraer2($fecha){
+//funcion que extrae los datos
+function extraer($fecha){
+    require_once './tools/BBDD.php';
+    $BBDD = new BBDD();
+    
+
     $fechaE = explode('/',$fecha);
     //I Disposiciones Generales
     $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=1';
-    $urlBOE = './wwwboe/boe.php';
 
     $html = file_get_html($urlBOE);
 
     //busco numero de BOE
-    $tit = $html->find('div.linkSumario2 p');
-    $titulo = $tit->plaintext;
+    foreach($html->find('li.puntoPDF a') as $a){
+        $tit = $a->href;
+        //se recorre todos los li, solo quiero el primero, que es donde esta el nombre de BOE
+        break;
+    }
+    $titulo = explode('/',$tit);
+    $titulo = $titulo[count($titulo)-1];
+    $titulo = explode('.',$titulo);
+    $titulo = $titulo[0];
+    
+    
+    $datosFinales = '';
+    $datosFinales['fecha'] = $fecha;
+    $datosFinales['NumeroBOE'] = $titulo;
+    
     
     //ahora busco lo que hay en las distintas leyes aprobadas
     $row = '';
@@ -35,111 +53,42 @@ function extraer2($fecha){
         $i++;
     }
     
-    
-    $resultado['leyes'] = $row;  
-//    var_dump($resultado);die;
-    return $resultado;
-}
 
-
-//funcion que extrae los datos
-function extraer($fecha){
-    
-    $fechaE = explode('/',$fecha);
-    //I Disposiciones Generales
-    $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=1';
-    
-    $c = curl_init($urlBOE);
-    curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-    $content = curl_exec($c);
-    curl_close($c);
-
-
-    //busco numero de BOE
-    preg_match_all("#</abbr>(.*?)</h2>#U", $content, $sumario);
-    
-    $datosFinales = '';
-    $datosFinales['fecha'] = $fecha;
-    $datosFinales['NumeroBOE'] = $sumario[1][0];
-    
-    //ahora busco lo que hay en las distintas leyes aprobadas
-    preg_match_all("'<li class=\"dispo\">(.*?)</li>'si", $content, $title);
-//    preg_match_all('|<li class="dispo"><p>(.*?)</p></li>|is', $content, $title);
-
-    //preparo un array con los datos
-    $datos = $title[1];
-    for ($i = 0; $i < count($datos); $i++) {
-
-        //titulo
-        preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
-        $titulo = html_entity_decode($var1[1]);
-
-        //PDF
-        preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
-        $urlPDF = "www.boe.es" . $var2[1];
-
-
-        //descargar el fichero en la carpeta /PDF
-        $file  = $urlPDF;
-
-        $nombreExplode = explode('/',$file);
-        $nombre = $nombreExplode[count($nombreExplode)-1];
-
-
-        $row['titulo'] = $titulo;
-        $row['PDF'] = $nombre;
-        $row['urlPDF'] = $urlPDF;
-
-        $datosLeyes1[] = $row;
-    }
-    
-    //III otras disposiciones
+    //III Otras disposiciones
     $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=3';
-    
-    $c = curl_init($urlBOE);
-    curl_setopt($c, CURLOPT_RETURNTRANSFER, true);
-    $content = curl_exec($c);
-    curl_close($c);
+
+    $html = file_get_html($urlBOE);
+
     
     //ahora busco lo que hay en las distintas leyes aprobadas
-    preg_match_all("'<li class=\"dispo\">(.*?)</li>'si", $content, $title);
-
-    //preparo un array con los datos
-    $datos = $title[1];
-    for ($i = 0; $i < count($datos); $i++) {
-
-        //titulo
-        preg_match("#<p>(.*?)</p>#U", $datos[$i], $var1);
-        $titulo = $var1[1];
-
-        //PDF
-        preg_match("#<a href=\"(.*?)\" title#U", $datos[$i], $var2);
-        $urlPDF = "www.boe.es" . $var2[1];
-
-
-        //descargar el fichero en la carpeta /PDF
+    $row3 = '';
+    $i=0;
+    foreach ($html->find('li.dispo p') as $value) {
+        $row3[$i]['titulo'] = $value->plaintext;
+        $i++;
+    }
+    $i=0;
+    foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
+        $urlPDF = "www.boe.es" . $value->href;
+        $row3[$i]['urlPDF'] = $urlPDF;
+        
         $file  = $urlPDF;
 
         $nombreExplode = explode('/',$file);
         $nombre = $nombreExplode[count($nombreExplode)-1];
-
-
-        $row['titulo'] = $titulo;
-        $row['PDF'] = $nombre;
-        $row['urlPDF'] = $urlPDF;
-
-        $datosLeyes3[] = $row;
+        $row3[$i]['PDF'] = $nombre;
+        $i++;
     }
     
-    $datosLeyes = array_merge($datosLeyes1,$datosLeyes3);
+    $rowFinal = array_merge($row,$row3);
     
-    $datosFinales['leyes'] = $datosLeyes;
-
+    
+    $datosFinales['leyes'] = $rowFinal;  
+    
+    
+    
+    //guardo los datos extraidos en la BBDD
     if(is_array($datosFinales)){
-        //guardo los datos extraidos en la BBDD
-        require_once './tools/BBDD.php';
-        $BBDD = new BBDD();
-
         for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
             $OK = $BBDD->insertar($datosFinales,$i);
             if($OK){
@@ -149,14 +98,16 @@ function extraer($fecha){
             }
         }
 
-        var_dump($datosFinales);
+        //var_dump($datosFinales);
     }else{
         echo "No hay datos en esa fecha";
     }
     
     
-    return true;
+    return $datosFinales;
 }
+
+
 
 
 //si hemos submitido
@@ -166,30 +117,43 @@ if(isset($_POST['fecha'])){
         echo "introduzca una fecha";
         echo "<input type='button' value='volver' onclick='javascript:history.back();' />";die;
     }else{
-
-        $datosFinales=extraer2($_POST['fecha']);
-        
-        var_dump($datosFinales);
-        //ahora
-        
-        
-    
+        $datosFinales = extraer($_POST['fecha']);
     }
 }
+
+
+////si hemos submitido
+//if(isset($_POST['borrar'])){
+//    $BBDD->borrarTabla();
+//            
+//}
+
 
 ?>
 
 <!DOCTYPE html>
 <html>
     <head>
-<!--        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">-->
-<!--        <meta http-equiv="Content-type" content="text/html; charset=utf-8" />-->
         <meta charset="UTF-8">
         <title>Extraer datos BOE</title>
         
-        <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.0/themes/base/jquery-ui.css" />
+<!--        <link rel="stylesheet" href="https://code.jquery.com/ui/1.10.0/themes/base/jquery-ui.css" />
         <script src="https://code.jquery.com/jquery-1.8.3.js"></script>
-        <script src="https://code.jquery.com/ui/1.10.0/jquery-ui.js"></script> 
+        <script src="https://code.jquery.com/ui/1.10.0/jquery-ui.js"></script> -->
+        
+<script src="https://code.jquery.com/jquery-1.8.3.js"></script>
+<script src="./js/jQuery/js/jquery.dataTables.qualidad.js"></script>
+<link rel="stylesheet" href="https://code.jquery.com/ui/1.10.0/themes/base/jquery-ui.css" />
+
+<link rel="stylesheet" href="./js/jQuery/css/jquery-ui.qualidad.css" />
+<script src="https://code.jquery.com/ui/1.10.0/jquery-ui.js"></script>
+
+<style type="text/css">
+    @import "./js/jQuery/css/demo_table_jui.css";
+    @import "./js/jQuery/themes/smoothness/jquery-ui-1.8.4.custom.css";
+    @import "./js/jQuery/css/table_qualidad.css";
+</style>
+        
 
         <script language="JavaScript">
         jQuery(function($){
@@ -219,6 +183,40 @@ if(isset($_POST['fecha'])){
                 });
         });
         </script>
+        
+        <script type="text/javascript" charset="utf-8">
+
+            $(document).ready(function(){
+
+                //formatear y traducir los datos de la tabla
+                $('#datatables').dataTable({
+                    "bProcessing": true,
+                    "sPaginationType":"full_numbers",
+                    "oLanguage": {
+                        "sLengthMenu": "Ver _MENU_ registros por pagina",
+                        "sZeroRecords": "No se han encontrado registros",
+                        "sInfo": "Ver _START_ al _END_ de _TOTAL_ Registros",
+                        "sInfoEmpty": "Ver 0 al 0 de 0 registros",
+                        "sInfoFiltered": "(filtrados _MAX_ total registros)",
+                        "sSearch": "Busqueda:"
+                    },
+                    "bSort":true,
+                    "aaSorting": [[ 0, "desc" ]],
+                    "aoColumns": [
+                            null,
+                            { "sType": 'string' },
+                            { "sType": 'string' },
+                            { "sType": 'string' },
+                            { "sType": 'string' }
+                    ],
+                    "bJQueryUI":true,
+                    "aLengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
+                });
+
+            });
+            
+        </script>
+        
         <script>
 
         function evaluar(url){
@@ -235,17 +233,6 @@ if(isset($_POST['fecha'])){
             });
         }
 
-        //var idFacturas=new Array();
-        <?php
-        //recorro el post y recojo en un array los id** = on
-//        $datos = '';
-//        foreach ($_POST as $key => $value) {
-//            if('id' === substr($key,0,2)){
-//                $num = substr($key,2);
-//                $datos[$num] = $_POST['opt'.$num];
-//            }
-//        }
-        ?>
         var listadoProveedores = new Array();
 
         <?php
@@ -310,6 +297,52 @@ if(isset($_POST['fecha'])){
         }
         ?>
         <span id="numValue"></span>
+        
+        <?php
+        $arDoc = $BBDD->listado();
+        ?>
+        <br/><br/>
+        <div align="center" style="width: 950px;">
+            <h3>Listado</h3>
+        <table id="datatables" class="display">
+            <thead>
+                <tr>
+                    <th style="width:5%;">Id</th>
+                    <th style="width:15%;">Número BOE</th>
+                    <th style="width:10%;">Fecha</th>
+                    <th style="width:55%;">Título</th>
+                    <th style="width:15%;">PDF</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                if(is_array($arDoc)){
+                    for ($i = 0; $i < count($arDoc); $i++) {
+                        //$link="javascript:document.location.href='../vista/docverext.php?id=".$arDoc[$i]['Id']."';";
+                        $link="";
+
+                        //arreglo la fecha
+                        $fecha = explode('/',$arDoc[$i]['fecha']);
+
+                        ?>
+                        <tr>
+                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['id']; ?></td>
+                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['numeroBOE']; ?></td>
+                            <td onClick="<?php echo $link; ?>"><?php echo "<!-- ".$fecha[2].$fecha[1].$fecha[0]." -->".$arDoc[$i]['fecha']; ?></td>
+                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['titulo']; ?></td>
+                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['pdf']; ?></td>
+                        </tr>
+                        <?php
+                    }
+                }
+                ?>
+            </tbody>
+        </table>
+        </div>
+         
+        <form action="borrarTabla.php" method="POST" name="form2">
+            <input type="submit" value="borrar datos" name="borrar" />
+        </form>
     </body>
 </html>
 <?php

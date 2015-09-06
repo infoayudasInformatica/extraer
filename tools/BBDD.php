@@ -25,8 +25,8 @@ class BBDD {
         
         $strSQL = "
                     INSERT INTO ia_datos (id, numeroBOE, fecha, titulo, pdf)
-                    VALUES ($Id,".trim($datosFinales['NumeroBOE']).",'".$this->fecha_to_DATETIME($datosFinales['fecha'])."',
-                            '". utf8_decode($datosFinales['leyes'][$i]['titulo'])."','".$datosFinales['leyes'][$i]['PDF']."')
+                    VALUES ($Id,'".trim($datosFinales['NumeroBOE'])."','".$this->fecha_to_DATETIME($datosFinales['fecha'])."',
+                            '". mysql_real_escape_string($datosFinales['leyes'][$i]['titulo'])."','".$datosFinales['leyes'][$i]['PDF']."')
                    ";
         
         $stmt = $db->ejecutar ( $strSQL );
@@ -56,6 +56,53 @@ class BBDD {
         }
 
         return $trozos[2].'-'.$trozos[1].'-'.$trozos[0].' 00:00:00';
+    }
+    
+    function listado(){
+        require_once 'conexion.php';
+        $db = new Db();
+        $db->conectar('');
+
+        
+        $strSQL = "
+                    SELECT id, numeroBOE, DATE_FORMAT(fecha,'%d/%m/%Y') AS fecha, titulo, pdf FROM ia_datos
+                   ";
+        
+        $stmt = $db->ejecutar ( $strSQL );
+        $db->desconectar ();
+        
+        $resultado='';
+        if($stmt){
+            while($row=mysql_fetch_array($stmt)){
+                $reg='';
+                foreach($row as $propiedad=>$valor){
+                    if(!is_numeric($propiedad)){
+                        $reg[$propiedad]=$valor;
+                    }
+                }
+                $resultado[] = $reg;
+            }
+        }else{
+            $resultado = false;
+        }
+        
+        return $resultado;
+    }
+    
+    function borrarTabla(){
+        require_once 'conexion.php';
+        $db = new Db();
+        $db->conectar('');
+
+        
+        $strSQL = "
+                    TRUNCATE ia_datos
+                   ";
+        
+        $stmt = $db->ejecutar ( $strSQL );
+        $db->desconectar ();
+        
+        return true;
     }
     
 }

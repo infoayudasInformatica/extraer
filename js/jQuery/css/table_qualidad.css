@@ -1,0 +1,127 @@
+/* 
+    Document   : Qualidad
+    Created on : 12-mar-2013, 13:42:17
+    Author     : Qualidad
+    Description:
+        Estilo de la tabla.
+*/
+
+#datatables {
+        font-family: calibri, Verdana, Arial, Helvetica, sans-serif;
+        font-size: 12px;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        background-color: #fff;
+}
+
+
+#datatables #container {
+        width: 800px;
+        margin: 30px auto;
+        padding: 0;
+}
+
+
+#datatables #footer {
+        margin: 40px auto 0 auto;
+        padding: 0;
+}
+
+#datatables #demo {
+        margin: 30px auto 0 auto;
+}
+
+#datatables .demo_jui {
+        margin: 30px auto 0 auto;
+}
+
+#datatables .big {
+        font-size: 1.3em;
+        font-weight: bold;
+        line-height: 1.6em;
+        color: #4E6CA3;
+}
+
+#datatables .spacer {
+        height: 15px;
+        clear: both;
+}
+
+#datatables .clear {
+        clear: both;
+}
+
+#datatables pre {
+        padding: 15px;
+        background-color: #F5F5F5;
+        border: 1px solid #CCCCCC;
+}
+
+#datatables h1 {
+        margin-top: 1.5em;
+        font-size: 1em;
+        font-weight: normal;
+        line-height: 1.1em;
+        color: #4E6CA3;
+        border-bottom: 1px solid #B0BED9;
+        clear: both;
+}
+
+#datatables h2 {
+        font-size: 1em;
+        font-weight: normal;
+        line-height: 1.1em;
+        color: #4E6CA3;
+        clear: both;
+}
+
+#datatables a {
+        color: #0063DC;
+        text-decoration: none;
+}
+
+#datatables a:hover {
+        text-decoration: underline;
+}
+
+#datatables ul {
+        color: #4E6CA3;
+}
+
+.css_right {
+        float: right;
+}
+
+.css_left {
+        float: left;
+}
+
+.demo_links {
+	float: left;
+	width: 50%;
+	margin-bottom: 1em;
+}
+
+#demo_info {
+	padding: 5px;
+	border: 1px solid #B0BED9;
+	height: 100px;
+	width: 100%;
+	overflow: auto;
+}
+
+#datatables code {
+	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+	padding: 2px 4px !important;
+	white-space: nowrap;
+	font-size: 0.8em;
+
+	color: #D14;
+	background-color: #F7F7F9;
+
+	border: 1px solid #E1E1E8;
+	-webkit-border-radius: 3px;
+	   -moz-border-radius: 3px;
+	        border-radius: 3px;
+}
