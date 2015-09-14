@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+
 require_once './tools/simple_html_dom.php';
 require_once './tools/BBDD.php';
 $BBDD = new BBDD();
@@ -17,67 +19,69 @@ function extraer($fecha){
     $html = file_get_html($urlBOE);
 
     //busco numero de BOE
-    foreach($html->find('li.puntoPDF a') as $a){
-        $tit = $a->href;
-        //se recorre todos los li, solo quiero el primero, que es donde esta el nombre de BOE
-        break;
-    }
-    $titulo = explode('/',$tit);
-    $titulo = $titulo[count($titulo)-1];
-    $titulo = explode('.',$titulo);
-    $titulo = $titulo[0];
-    
-    
-    $datosFinales = '';
-    $datosFinales['fecha'] = $fecha;
-    $datosFinales['NumeroBOE'] = $titulo;
-    
-    
-    //ahora busco lo que hay en las distintas leyes aprobadas
-    $row = '';
-    $i=0;
-    foreach ($html->find('li.dispo p') as $value) {
-        $row[$i]['titulo'] = $value->plaintext;
-        $i++;
-    }
-    $i=0;
-    foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
-        $urlPDF = "www.boe.es" . $value->href;
-        $row[$i]['urlPDF'] = $urlPDF;
-        
-        $file  = $urlPDF;
+    if($html !== false){
+        foreach($html->find('li.puntoPDF a') as $a){
+            $tit = $a->href;
+            //se recorre todos los li, solo quiero el primero, que es donde esta el nombre de BOE
+            break;
+        }
+        $titulo = explode('/',$tit);
+        $titulo = $titulo[count($titulo)-1];
+        $titulo = explode('.',$titulo);
+        $titulo = $titulo[0];
 
-        $nombreExplode = explode('/',$file);
-        $nombre = $nombreExplode[count($nombreExplode)-1];
-        $row[$i]['PDF'] = $nombre;
-        $i++;
+
+        $datosFinales = '';
+        $datosFinales['fecha'] = $fecha;
+        $datosFinales['NumeroBOE'] = $titulo;
+
+
+        //ahora busco lo que hay en las distintas leyes aprobadas
+        $row = '';
+        $i=0;
+        foreach ($html->find('li.dispo p') as $value) {
+            $row[$i]['titulo'] = $value->plaintext;
+            $i++;
+        }
+        $i=0;
+        foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
+            $urlPDF = "www.boe.es" . $value->href;
+            $row[$i]['urlPDF'] = $urlPDF;
+
+            $file  = $urlPDF;
+
+            $nombreExplode = explode('/',$file);
+            $nombre = $nombreExplode[count($nombreExplode)-1];
+            $row[$i]['PDF'] = $nombre;
+            $i++;
+        }
     }
-    
 
     //III Otras disposiciones
     $urlBOE = 'http://www.boe.es/boe/dias/'.$fechaE[2].'/'.$fechaE[1].'/'.$fechaE[0].'/index.php?s=3';
 
     $html = file_get_html($urlBOE);
 
-    
-    //ahora busco lo que hay en las distintas leyes aprobadas
-    $row3 = '';
-    $i=0;
-    foreach ($html->find('li.dispo p') as $value) {
-        $row3[$i]['titulo'] = $value->plaintext;
-        $i++;
-    }
-    $i=0;
-    foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
-        $urlPDF = "www.boe.es" . $value->href;
-        $row3[$i]['urlPDF'] = $urlPDF;
-        
-        $file  = $urlPDF;
+    if($html !== false){
+        //ahora busco lo que hay en las distintas leyes aprobadas
+        $row3 = '';
+        $i=0;
+        foreach ($html->find('li.dispo p') as $value) {
+            $row3[$i]['titulo'] = $value->plaintext;
+            $i++;
+        }
+        $i=0;
+        foreach ($html->find('li.dispo div ul li.puntoPDF a') as $value) {
+            $urlPDF = "www.boe.es" . $value->href;
+            $row3[$i]['urlPDF'] = $urlPDF;
 
-        $nombreExplode = explode('/',$file);
-        $nombre = $nombreExplode[count($nombreExplode)-1];
-        $row3[$i]['PDF'] = $nombre;
-        $i++;
+            $file  = $urlPDF;
+
+            $nombreExplode = explode('/',$file);
+            $nombre = $nombreExplode[count($nombreExplode)-1];
+            $row3[$i]['PDF'] = $nombre;
+            $i++;
+        }
     }
     
     $rowFinal = array_merge($row,$row3);
@@ -236,6 +240,9 @@ if(isset($_POST['fecha'])){
         var listadoProveedores = new Array();
 
         <?php
+//        if($datosFinales === false){
+//            
+//        }
         for ($i = 0; $i < count($datosFinales['leyes']); $i++) {
             ?>
             listadoProveedores[<?php echo $i;?>] = "<?php echo $datosFinales['leyes'][$i]['urlPDF'];?>";
@@ -250,25 +257,25 @@ if(isset($_POST['fecha'])){
         //cantidad total de progreso
         var total = <?php echo count($datosFinales['leyes']);?>;
 
-        function startProgress() {
-            //ejecuto la funcion que llama por AJAX la los procedimientos para guardar la factura    
-            evaluar(listadoProveedores[currProgress]);
 
-            ////incrementamos el valor del progreso cada vez que la funciÃ³n se ejecuta
-            currProgress++;
-            //comprobamos si hemos terminado
-            if(currProgress>(listadoProveedores.length-1)){
-                done=true;
-            }
-            // sino hemos terminado, volvemos a llamar a la funciÃ³n despuÃ©s de un tiempo
-            if(!done)
-            {
-//                document.getElementById("startBtn").disabled = true;
-                setTimeout("startProgress()",0);
-            }  
-            //tarea terminada, habilitar el botón
-            else{   
-//                document.getElementById("startBtn").disabled = false;
+        function startProgress() {
+            if(total !== 0){
+                //ejecuto la funcion que llama por AJAX la los procedimientos para guardar la factura    
+                evaluar(listadoProveedores[currProgress]);
+
+                ////incrementamos el valor del progreso cada vez que la funciÃ³n se ejecuta
+                currProgress++;
+                //comprobamos si hemos terminado
+                if(currProgress>(listadoProveedores.length-1)){
+                    done=true;
+                }
+                // sino hemos terminado, volvemos a llamar a la funciÃ³n despuÃ©s de un tiempo
+                if(!done)
+                {
+                    setTimeout("startProgress()",0);
+                }
+            }else{
+                alert('No hay informacion de este dia');
             }
         }
 
@@ -285,8 +292,13 @@ if(isset($_POST['fecha'])){
                 ?>
                 "
         >
+        <br/>
+        <span id="numValue"></span>
+        <br/>
+        <br/>
+        <br/>
         <?php
-        if(!isset($_POST['fecha'])){
+//        if(!isset($_POST['fecha'])){
         ?>
         <form action="index.php" method="POST" name="form1">
             <label>Elige fecha</label>
@@ -294,9 +306,8 @@ if(isset($_POST['fecha'])){
             <input type="submit" name="submit" value="OK" />
         </form>
         <?php
-        }
+//        }
         ?>
-        <span id="numValue"></span>
         
         <?php
         $arDoc = $BBDD->listado();
@@ -319,17 +330,18 @@ if(isset($_POST['fecha'])){
                 if(is_array($arDoc)){
                     for ($i = 0; $i < count($arDoc); $i++) {
                         //$link="javascript:document.location.href='../vista/docverext.php?id=".$arDoc[$i]['Id']."';";
-                        $link="";
+                        $link = "javascript:window.open('./PDF/"  . $arDoc[$i]['pdf'] . "');";
+                        //$link="";
 
                         //arreglo la fecha
                         $fecha = explode('/',$arDoc[$i]['fecha']);
 
                         ?>
                         <tr>
-                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['id']; ?></td>
-                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['numeroBOE']; ?></td>
-                            <td onClick="<?php echo $link; ?>"><?php echo "<!-- ".$fecha[2].$fecha[1].$fecha[0]." -->".$arDoc[$i]['fecha']; ?></td>
-                            <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['titulo']; ?></td>
+                            <td onClick=""><?php echo $arDoc[$i]['id']; ?></td>
+                            <td onClick=""><?php echo $arDoc[$i]['numeroBOE']; ?></td>
+                            <td onClick=""><?php echo "<!-- ".$fecha[2].$fecha[1].$fecha[0]." -->".$arDoc[$i]['fecha']; ?></td>
+                            <td onClick=""><?php echo $arDoc[$i]['titulo']; ?></td>
                             <td onClick="<?php echo $link; ?>"><?php echo $arDoc[$i]['pdf']; ?></td>
                         </tr>
                         <?php

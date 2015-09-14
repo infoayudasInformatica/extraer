@@ -7,7 +7,7 @@ $nombreExplode = explode('/',$file);
 $nombre = $nombreExplode[count($nombreExplode)-1];
 
 
-$path = dirname(__FILE__)."./PDF/".$nombre;
+$path = dirname(__FILE__)."/PDF/".$nombre;
 
 $ch = curl_init($file);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
